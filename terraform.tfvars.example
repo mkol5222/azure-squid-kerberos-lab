@@ -1,0 +1,24 @@
+# Copy this file to terraform.tfvars and fill in your own values.
+# terraform.tfvars is gitignored -- keep it that way. There are no
+# passwords to set here: Terraform generates those and puts them in
+# Key Vault (see outputs.tf / README.md).
+
+location             = "eastus"
+resource_group_name  = "rg-squid-kerberos-lab"
+project_name         = "squidkrb"
+
+domain_name  = "lab.contoso.local"
+netbios_name = "LAB"
+
+# Contents of your SSH *public* key, e.g. `cat ~/.ssh/id_ed25519.pub`.
+# Never put a private key here.
+admin_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIyourkeyhere you@yourhost"
+
+deploy_bastion     = true
+deploy_test_client = true
+
+tags = {
+  environment = "lab"
+  purpose     = "squid-kerberos-poc"
+  owner       = "your-name"
+}

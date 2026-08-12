@@ -1,0 +1,22 @@
+# Terraform state can contain secrets in plaintext -- never commit it.
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.tfstate.lock.info
+
+# Real variable values (SSH keys, overrides) -- keep only the .example.
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+
+# Never commit key material.
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+crash.log
+crash.*.log
+
+# Commit .terraform.lock.hcl (it pins provider versions for reproducible
+# applies) -- intentionally NOT ignored.
