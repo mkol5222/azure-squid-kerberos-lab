@@ -32,3 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   handler not supported for OS type 'Windows'`. VM Run Command has no such
   restriction and accepts the script directly, removing the need for the
   base64/write-file wrapper.
+- `scripts/finalize-dc.ps1` failed on a clean DC with `Remove-DnsServerResourceRecord
+  : Failed to get ... record` and aborted the whole script. That cmdlet
+  throws a `CimException` when the record doesn't exist yet, which
+  `-ErrorAction SilentlyContinue` does not suppress (a known `DnsServer`
+  module quirk); combined with `$ErrorActionPreference = "Stop"` this
+  killed the script on first run, before any record existed to remove.
+  Replaced both `-ErrorAction SilentlyContinue` remove calls with
+  `try`/`catch`, which reliably catches the exception.

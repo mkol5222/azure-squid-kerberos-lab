@@ -29,12 +29,23 @@ if ($existingForwarders -notcontains "168.63.129.16") {
 }
 
 Write-Output "Creating A/PTR record: $($env:LAB_PROXY_HOSTNAME).$($env:LAB_DOMAIN_NAME) -> $($env:LAB_PROXY_IP)"
-Remove-DnsServerResourceRecord -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_PROXY_HOSTNAME -RRType A -Force -ErrorAction SilentlyContinue
+# Remove-DnsServerResourceRecord throws a CimException (not a normal
+# non-terminating error) when the record doesn't exist yet, so
+# -ErrorAction SilentlyContinue can't suppress it -- only try/catch can.
+try {
+    Remove-DnsServerResourceRecord -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_PROXY_HOSTNAME -RRType A -Force -ErrorAction Stop
+} catch {
+    Write-Output "No existing A record for $($env:LAB_PROXY_HOSTNAME) to remove (first run) -- continuing."
+}
 Add-DnsServerResourceRecordA -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_PROXY_HOSTNAME -IPv4Address $env:LAB_PROXY_IP -CreatePtr
 
 if ($env:LAB_CLIENT_HOSTNAME -and $env:LAB_CLIENT_IP) {
     Write-Output "Creating A/PTR record: $($env:LAB_CLIENT_HOSTNAME).$($env:LAB_DOMAIN_NAME) -> $($env:LAB_CLIENT_IP)"
-    Remove-DnsServerResourceRecord -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_CLIENT_HOSTNAME -RRType A -Force -ErrorAction SilentlyContinue
+    try {
+        Remove-DnsServerResourceRecord -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_CLIENT_HOSTNAME -RRType A -Force -ErrorAction Stop
+    } catch {
+        Write-Output "No existing A record for $($env:LAB_CLIENT_HOSTNAME) to remove (first run) -- continuing."
+    }
     Add-DnsServerResourceRecordA -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_CLIENT_HOSTNAME -IPv4Address $env:LAB_CLIENT_IP -CreatePtr
 }
 
