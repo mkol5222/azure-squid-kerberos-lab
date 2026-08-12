@@ -40,3 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   killed the script on first run, before any record existed to remove.
   Replaced both `-ErrorAction SilentlyContinue` remove calls with
   `try`/`catch`, which reliably catches the exception.
+- `scripts/finalize-dc.ps1` then failed on `Add-DnsServerResourceRecordA
+  -CreatePtr` with `Failed to create PTR record`. `Install-ADDSForest`
+  only creates the forward lookup zone, never a reverse one, so
+  `-CreatePtr` had no reverse zone to place the PTR record in. Added
+  `Ensure-ReverseZone`, which creates the `/24` reverse zone for each
+  target IP (derived from its first three octets, matching this lab's
+  fixed `/24` subnetting) before the A/PTR record is created.

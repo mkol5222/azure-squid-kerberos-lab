@@ -28,7 +28,30 @@ if ($existingForwarders -notcontains "168.63.129.16") {
     Add-DnsServerForwarder -IPAddress "168.63.129.16"
 }
 
+# Install-ADDSForest only creates the forward lookup zone, never a reverse
+# one -- Add-DnsServerResourceRecordA's -CreatePtr fails without a matching
+# reverse zone to put the PTR record in. Every subnet in this lab is a
+# /24 (see README's network diagram), so the zone for a given IP is
+# derived from its first three octets.
+function Ensure-ReverseZone {
+    param([string]$IPv4Address)
+    $octets = $IPv4Address.Split('.')
+    $networkId = "$($octets[0]).$($octets[1]).$($octets[2]).0/24"
+    $zoneName = "$($octets[2]).$($octets[1]).$($octets[0]).in-addr.arpa"
+    $zoneExists = $true
+    try {
+        Get-DnsServerZone -Name $zoneName -ErrorAction Stop | Out-Null
+    } catch {
+        $zoneExists = $false
+    }
+    if (-not $zoneExists) {
+        Write-Output "Creating reverse lookup zone $zoneName ($networkId)..."
+        Add-DnsServerPrimaryZone -NetworkID $networkId -ReplicationScope "Forest"
+    }
+}
+
 Write-Output "Creating A/PTR record: $($env:LAB_PROXY_HOSTNAME).$($env:LAB_DOMAIN_NAME) -> $($env:LAB_PROXY_IP)"
+Ensure-ReverseZone -IPv4Address $env:LAB_PROXY_IP
 # Remove-DnsServerResourceRecord throws a CimException (not a normal
 # non-terminating error) when the record doesn't exist yet, so
 # -ErrorAction SilentlyContinue can't suppress it -- only try/catch can.
@@ -41,6 +64,7 @@ Add-DnsServerResourceRecordA -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_PROXY
 
 if ($env:LAB_CLIENT_HOSTNAME -and $env:LAB_CLIENT_IP) {
     Write-Output "Creating A/PTR record: $($env:LAB_CLIENT_HOSTNAME).$($env:LAB_DOMAIN_NAME) -> $($env:LAB_CLIENT_IP)"
+    Ensure-ReverseZone -IPv4Address $env:LAB_CLIENT_IP
     try {
         Remove-DnsServerResourceRecord -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_CLIENT_HOSTNAME -RRType A -Force -ErrorAction Stop
     } catch {
