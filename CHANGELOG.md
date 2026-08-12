@@ -47,3 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Ensure-ReverseZone`, which creates the `/24` reverse zone for each
   target IP (derived from its first three octets, matching this lab's
   fixed `/24` subnetting) before the A/PTR record is created.
+- The Squid VM's `configure-squid-kerberos` extension failed with
+  `kinit: Resource temporarily unavailable` (Kerberos over UDP/88 timing
+  out, not erroring cleanly). Root cause: a brand-new forest's first DC
+  often stays classified as network category `Public` after the
+  post-promotion reboot, since Network Location Awareness needs a
+  reachable DC to detect a domain and this machine only just became one.
+  Stuck on `Public`, Windows Firewall's default rules silently drop
+  inbound AD DS/Kerberos traffic from other subnets. Added a step to
+  `finalize-dc.ps1` that forces the network profile to `Private` and
+  enables the `Active Directory Domain Services`/`DNS Service` firewall
+  rule groups for all profiles.

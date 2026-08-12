@@ -22,6 +22,22 @@ if (-not $env:LAB_DOMAIN_NAME -or -not $env:LAB_PROXY_HOSTNAME -or -not $env:LAB
 Import-Module DnsServer
 Import-Module ActiveDirectory
 
+# A brand-new forest's first DC often stays classified as "Public" by
+# Network Location Awareness after the post-promotion reboot -- NLA needs
+# a working DC to detect a domain, and this machine only just became one.
+# Stuck on Public, Windows Firewall's default rules silently drop inbound
+# AD DS/Kerberos traffic from other subnets (no RST/ICMP back), which
+# looks like a timeout/EAGAIN ("Resource temporarily unavailable") to
+# clients like kinit rather than a clean refusal. Force Private so the
+# AD DS firewall rule group (which covers Kerberos/LDAP/DNS/etc.) applies.
+Write-Output "Ensuring the network profile is Private and AD DS firewall rules are enabled..."
+Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq "Public" } |
+    Set-NetConnectionProfile -NetworkCategory Private
+Get-NetFirewallRule -DisplayGroup "Active Directory Domain Services" |
+    Set-NetFirewallRule -Profile Any -Enabled True
+Get-NetFirewallRule -DisplayGroup "DNS Service" |
+    Set-NetFirewallRule -Profile Any -Enabled True
+
 Write-Output "Ensuring Azure DNS (168.63.129.16) is a forwarder for external resolution..."
 $existingForwarders = (Get-DnsServerForwarder).IPAddress.IPAddressToString
 if ($existingForwarders -notcontains "168.63.129.16") {
