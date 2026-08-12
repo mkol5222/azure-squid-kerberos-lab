@@ -145,7 +145,7 @@ variable "client_image" {
   default = {
     publisher = "MicrosoftWindowsDesktop"
     offer     = "windows-11"
-    sku       = "win11-23h2-pro"
+    sku       = "win11-25h2-pro"
     version   = "latest"
   }
 }

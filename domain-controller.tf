@@ -99,24 +99,21 @@ locals {
     ${file("${path.module}/scripts/finalize-dc.ps1")}
   EOT
 
-  dc_finalize_command = "powershell -ExecutionPolicy Bypass -Command \"New-Item -ItemType Directory -Force -Path C:\\AzureData | Out-Null; [IO.File]::WriteAllText('C:\\AzureData\\finalize-dc.ps1', [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64encode(local.dc_finalize_script)}'))); powershell -ExecutionPolicy Bypass -File C:\\AzureData\\finalize-dc.ps1\""
 }
 
-resource "azurerm_virtual_machine_extension" "dc_finalize" {
-  name                       = "finalize-dns"
-  virtual_machine_id         = azurerm_windows_virtual_machine.dc.id
-  publisher                  = "Microsoft.Compute"
-  type                       = "CustomScriptExtension"
-  type_handler_version       = "1.10"
-  auto_upgrade_minor_version = true
+# Windows VMs only support one CustomScriptExtension handler at a time, and
+# dc_promote above already occupies it -- a second azurerm_virtual_machine_
+# extension of the same type errors with "Multiple VMExtensions per handler
+# not supported". VM Run Command has no such restriction and takes the raw
+# script directly, so no base64/write-file wrapper is needed here.
+resource "azurerm_virtual_machine_run_command" "dc_finalize" {
+  name               = "finalize-dns"
+  location           = azurerm_resource_group.lab.location
+  virtual_machine_id = azurerm_windows_virtual_machine.dc.id
 
-  protected_settings = jsonencode({
-    commandToExecute = local.dc_finalize_command
-  })
+  source {
+    script = local.dc_finalize_script
+  }
 
   depends_on = [time_sleep.wait_for_dc_reboot]
-
-  timeouts {
-    create = "30m"
-  }
 }

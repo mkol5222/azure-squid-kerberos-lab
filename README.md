@@ -133,8 +133,11 @@ cp terraform.tfvars.example terraform.tfvars
 terraform fmt
 terraform init
 terraform validate
+#
 terraform plan -out=lab.tfplan
 terraform apply lab.tfplan
+# OR
+terraform apply -auto-approve
 ```
 
 A full apply takes roughly 25-35 minutes — most of it is the DC's forest

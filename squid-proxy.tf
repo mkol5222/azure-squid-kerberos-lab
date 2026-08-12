@@ -82,7 +82,7 @@ resource "azurerm_virtual_machine_extension" "proxy_configure" {
     commandToExecute = local.squid_configure_command
   })
 
-  depends_on = [azurerm_virtual_machine_extension.dc_finalize]
+  depends_on = [azurerm_virtual_machine_run_command.dc_finalize]
 
   timeouts {
     create = "20m"
