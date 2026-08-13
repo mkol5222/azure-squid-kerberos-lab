@@ -58,3 +58,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `finalize-dc.ps1` that forces the network profile to `Private` and
   enables the `Active Directory Domain Services`/`DNS Service` firewall
   rule groups for all profiles.
+- The Squid VM's `configure-squid-kerberos` extension still failed with
+  `kinit: Resource temporarily unavailable` after the fix above. Root
+  cause this time: `var.domain_name` ends in `.local`, which RFC 6762
+  reserves for multicast DNS. Ubuntu's `systemd-resolved` hard-routes any
+  `*.local` query to its mDNS resolver only, never to the real unicast DNS
+  server configured for the link, so `kinit`/`msktutil` (which resolve
+  hostnames via the normal glibc/NSS path) got `EAI_AGAIN` even though the
+  DC's DNS server answered correctly when queried directly with `dig
+  @<dc-ip>` (confirmed via `az vm run-command` diagnostics on both VMs).
+  Added a step to `configure-squid.sh` that disables `systemd-resolved`'s
+  stub listener and points `/etc/resolv.conf` at its DHCP-learned
+  nameserver list directly, bypassing the mDNS special-casing entirely.
+- `scripts/finalize-dc.ps1` failed with `Add-DnsServerResourceRecordA :
+  Failed to create PTR record` (WIN32 9715) on any rerun after the first
+  successful one. Azure Run Command has no partial update -- even a
+  tags-only Terraform diff on `azurerm_virtual_machine_run_command.dc_finalize`
+  redeploys and re-executes the whole script -- and the script only
+  removed the forward A record before recreating it with `-CreatePtr`,
+  never the PTR record a prior run had already created in the reverse
+  zone. Replaced the ad hoc A-record removal with `Remove-ExistingRecords`,
+  which clears both the A and PTR records before each `-CreatePtr` call.

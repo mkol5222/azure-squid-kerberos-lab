@@ -66,26 +66,41 @@ function Ensure-ReverseZone {
     }
 }
 
+# Terraform re-runs this whole script on every apply that touches the
+# azurerm_virtual_machine_run_command resource (Azure Run Command has no
+# partial-update -- even a tags-only change redeploys and re-executes the
+# script). -CreatePtr therefore needs both the forward A record AND the
+# reverse-zone PTR record cleared first, or a rerun collides with the PTR
+# record the previous run already created and fails with "Failed to
+# create PTR record" (WIN32 9715). Remove-DnsServerResourceRecord throws a
+# CimException (not a normal non-terminating error) when the record
+# doesn't exist yet, so -ErrorAction SilentlyContinue can't suppress it --
+# only try/catch can.
+function Remove-ExistingRecords {
+    param([string]$Hostname, [string]$IPv4Address)
+    try {
+        Remove-DnsServerResourceRecord -ZoneName $env:LAB_DOMAIN_NAME -Name $Hostname -RRType A -Force -ErrorAction Stop
+    } catch {
+        Write-Output "No existing A record for $Hostname to remove (first run) -- continuing."
+    }
+    $octets = $IPv4Address.Split('.')
+    $reverseZoneName = "$($octets[2]).$($octets[1]).$($octets[0]).in-addr.arpa"
+    try {
+        Remove-DnsServerResourceRecord -ZoneName $reverseZoneName -Name $octets[3] -RRType Ptr -Force -ErrorAction Stop
+    } catch {
+        Write-Output "No existing PTR record for $Hostname to remove (first run) -- continuing."
+    }
+}
+
 Write-Output "Creating A/PTR record: $($env:LAB_PROXY_HOSTNAME).$($env:LAB_DOMAIN_NAME) -> $($env:LAB_PROXY_IP)"
 Ensure-ReverseZone -IPv4Address $env:LAB_PROXY_IP
-# Remove-DnsServerResourceRecord throws a CimException (not a normal
-# non-terminating error) when the record doesn't exist yet, so
-# -ErrorAction SilentlyContinue can't suppress it -- only try/catch can.
-try {
-    Remove-DnsServerResourceRecord -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_PROXY_HOSTNAME -RRType A -Force -ErrorAction Stop
-} catch {
-    Write-Output "No existing A record for $($env:LAB_PROXY_HOSTNAME) to remove (first run) -- continuing."
-}
+Remove-ExistingRecords -Hostname $env:LAB_PROXY_HOSTNAME -IPv4Address $env:LAB_PROXY_IP
 Add-DnsServerResourceRecordA -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_PROXY_HOSTNAME -IPv4Address $env:LAB_PROXY_IP -CreatePtr
 
 if ($env:LAB_CLIENT_HOSTNAME -and $env:LAB_CLIENT_IP) {
     Write-Output "Creating A/PTR record: $($env:LAB_CLIENT_HOSTNAME).$($env:LAB_DOMAIN_NAME) -> $($env:LAB_CLIENT_IP)"
     Ensure-ReverseZone -IPv4Address $env:LAB_CLIENT_IP
-    try {
-        Remove-DnsServerResourceRecord -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_CLIENT_HOSTNAME -RRType A -Force -ErrorAction Stop
-    } catch {
-        Write-Output "No existing A record for $($env:LAB_CLIENT_HOSTNAME) to remove (first run) -- continuing."
-    }
+    Remove-ExistingRecords -Hostname $env:LAB_CLIENT_HOSTNAME -IPv4Address $env:LAB_CLIENT_IP
     Add-DnsServerResourceRecordA -ZoneName $env:LAB_DOMAIN_NAME -Name $env:LAB_CLIENT_HOSTNAME -IPv4Address $env:LAB_CLIENT_IP -CreatePtr
 }
 

@@ -43,6 +43,29 @@ add-apt-repository -y universe || true
 apt-get update -y
 apt-get install -y squid krb5-user msktutil libsasl2-modules-gssapi-mit libsasl2-modules chrony
 
+echo "--- Bypassing systemd-resolved's stub for DNS (see why below) ---"
+# $LAB_DOMAIN_NAME ends in .local, which RFC 6762 reserves for multicast
+# DNS. Ubuntu's systemd-resolved hard-routes any *.local query to its mDNS
+# resolver only -- never to the real unicast DNS server configured for the
+# link -- regardless of what /etc/resolv.conf or `resolvectl dns` say. mDNS
+# is disabled on this link (and the DC doesn't speak it anyway), so every
+# *.local lookup via the normal glibc/NSS path (getaddrinfo, and therefore
+# kinit/msktutil) silently fails with EAI_AGAIN, which krb5 reports as
+# "Resource temporarily unavailable" -- even though the DC's DNS server
+# itself answers fine (confirmed with `dig @<dc-ip>`, which talks to it
+# directly and bypasses the stub). Disabling the stub listener and
+# symlinking /etc/resolv.conf to resolved's own "uplink" file (the plain
+# nameserver list it learned via DHCP) restores normal DNS behavior with
+# no mDNS special-casing.
+mkdir -p /etc/systemd/resolved.conf.d
+cat >/etc/systemd/resolved.conf.d/no-stub.conf <<RESOLVEDEOF
+[Resolve]
+DNSStubListener=no
+RESOLVEDEOF
+systemctl restart systemd-resolved
+ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
+getent ahosts "$LAB_DC_FQDN"
+
 echo "--- Time sync against the DC (Kerberos needs clocks within ~5 minutes) ---"
 mkdir -p /etc/chrony/conf.d
 cat >/etc/chrony/conf.d/lab-dc.conf <<CHRONYEOF
