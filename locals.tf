@@ -2,9 +2,15 @@ locals {
   # Kerberos realms for AD are conventionally the uppercase DNS domain name.
   realm = upper(var.domain_name)
 
-  # "lab.contoso.local" -> "DC=lab,DC=contoso,DC=local"
-  domain_dn    = join(",", [for part in split(".", var.domain_name) : "DC=${part}"])
-  computers_dn = "CN=Computers,${local.domain_dn}"
+  # Relative, not the full "CN=Computers,DC=lab,..." DN: msktutil's --base
+  # only treats a value as absolute when it ends with the domain base DN
+  # it computes internally, using its own case convention (observed as
+  # e.g. "dc=LAB,dc=CONTOSO,dc=LOCAL" -- derived from the realm, not
+  # var.domain_name). A full DN built with our own casing doesn't match
+  # that string, so msktutil treats it as relative anyway and appends its
+  # base DN a second time, producing an invalid doubled DN. A relative
+  # base sidesteps the mismatch entirely.
+  computers_dn = "CN=Computers"
 
   dc_computer_name     = "dc1"
   dc_fqdn              = "${local.dc_computer_name}.${var.domain_name}"

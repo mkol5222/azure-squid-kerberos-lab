@@ -107,6 +107,12 @@ echo "$LAB_DOMAIN_ADMIN_PASSWORD" | kinit "$LAB_DOMAIN_ADMIN_UPN"
 klist
 
 echo "--- Creating AD computer object + keytab with msktutil (AES only via --enctypes 24) ---"
+# --no-reverse-lookups: this VNet has no reverse-lookup zone for the DC's
+# subnet, so msktutil's default PTR-based canonicalization of --server
+# fails (KRB5 reports "Server not found in Kerberos database" during the
+# LDAP GSSAPI bind, since it ends up requesting a service ticket for the
+# wrong SPN). $LAB_DC_FQDN is already the correct FQDN, so there's nothing
+# for the reverse lookup to add.
 mkdir -p /etc/squid
 msktutil --create \
   --base "$LAB_COMPUTERS_DN" \
@@ -116,6 +122,7 @@ msktutil --create \
   --computer-name "$LAB_MSKTUTIL_COMPUTER_NAME" \
   --upn "HTTP/$LAB_PROXY_FQDN" \
   --server "$LAB_DC_FQDN" \
+  --no-reverse-lookups \
   --enctypes 24 \
   --verbose
 

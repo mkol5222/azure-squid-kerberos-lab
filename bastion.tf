@@ -131,8 +131,12 @@ resource "azurerm_bastion_host" "lab" {
   name                = "bastion-${local.name_suffix}"
   location            = azurerm_resource_group.lab.location
   resource_group_name = azurerm_resource_group.lab.name
-  sku                 = "Basic"
-  tags                = local.tags
+  # Standard (not Basic) + tunneling_enabled is required for Native Client
+  # support -- the `az network bastion ssh`/`rdp` commands this lab's
+  # `make go2*` targets use.
+  sku               = "Standard"
+  tunneling_enabled = true
+  tags              = local.tags
 
   ip_configuration {
     name                 = "bastion-ipconfig"
