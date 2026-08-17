@@ -36,7 +36,11 @@ output "connect_via_bastion" {
   description = "Example az cli commands to reach each VM with no public IP anywhere."
   value = var.deploy_bastion ? {
     rdp_to_dc     = "az network bastion rdp --name ${azurerm_bastion_host.lab[0].name} --resource-group ${azurerm_resource_group.lab.name} --target-resource-id ${azurerm_windows_virtual_machine.dc.id}"
-    ssh_to_proxy  = "az network bastion ssh --name ${azurerm_bastion_host.lab[0].name} --resource-group ${azurerm_resource_group.lab.name} --target-resource-id ${azurerm_linux_virtual_machine.proxy.id} --auth-type ssh-key --username ${var.local_admin_username} --ssh-key <path-to-your-private-key>"
+    # -- -o IdentitiesOnly=yes: without it, an ssh-agent holding several
+    # keys offers all of them before the one named by --ssh-key, and
+    # tunneled bastion SSH's low MaxAuthTries rejects the connection
+    # ("Too many authentication failures") before it ever gets there.
+    ssh_to_proxy  = "az network bastion ssh --name ${azurerm_bastion_host.lab[0].name} --resource-group ${azurerm_resource_group.lab.name} --target-resource-id ${azurerm_linux_virtual_machine.proxy.id} --auth-type ssh-key --username ${var.local_admin_username} --ssh-key ~/.ssh/id_ed25519 -- -o IdentitiesOnly=yes"
     rdp_to_client = var.deploy_test_client ? "az network bastion rdp --name ${azurerm_bastion_host.lab[0].name} --resource-group ${azurerm_resource_group.lab.name} --target-resource-id ${azurerm_windows_virtual_machine.client[0].id}" : null
   } : null
 }
