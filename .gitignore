@@ -22,5 +22,8 @@ id_ed25519
 crash.log
 crash.*.log
 
+.env
+.env.keys
+
 # Commit .terraform.lock.hcl (it pins provider versions for reproducible
 # applies) -- intentionally NOT ignored.
