@@ -1,28 +1,42 @@
 ```bash
 
-az network bastion ssh --name bastion-squidkrb-usspv --resource-group rg-squid-kerberos-lab \
-  --target-resource-id <vm-proxy-id> --auth-type ssh-key --username azlabadmin \
-  --ssh-key ~/.ssh/id_ed25519 -- -o IdentitiesOnly=yes
+# deploy
 
+```bash
+time make up
+```
 
-az network bastion ssh --name bastion-squidkrb-usspv --resource-group rg-squid-kerberos-lab \
-  --target-resource-id /subscriptions/f4ad5e85-ec75-4321-8854-ed7eb611f61d/resourceGroups/rg-squid-kerberos-lab/providers/Microsoft.Compute/virtualMachines/vm-proxy \
-  --auth-type ssh-key --username azlabadmin \
-  --ssh-key ~/.ssh/id_ed25519 -- -o IdentitiesOnly=yes
+# access proxy vm via bastion
 
-
-# WORKING
-
-az network bastion ssh --name bastion-squidkrb-usspv --resource-group rg-squid-kerberos-lab \
-  --target-resource-id /subscriptions/f4ad5e85-ec75-4321-8854-ed7eb611f61d/resourceGroups/rg-squid-kerberos-lab/providers/Microsoft.Compute/virtualMachines/vm-proxy \
+```shell
+SUB_ID=$(az account show --query id -o tsv)
+BASTION_NAME=$(az network bastion list --resource-group rg-squid-kerberos-lab --query "[0].name" -o tsv)
+az network bastion ssh --name "$BASTION_NAME" --resource-group rg-squid-kerberos-lab \
+  --target-resource-id /subscriptions/$SUB_ID/resourceGroups/rg-squid-kerberos-lab/providers/Microsoft.Compute/virtualMachines/vm-proxy \
   --auth-type ssh-key --username azlabadmin \
   --ssh-key ~/.ssh/m4.pub -- -o IdentitiesOnly=yes
+```
 
 # azlabadmin@lab.contoso.local 
 
-az network bastion tunnel --name bastion-squidkrb-usspv --resource-group rg-squid-kerberos-lab \
-  --target-resource-id /subscriptions/f4ad5e85-ec75-4321-8854-ed7eb611f61d/resourceGroups/rg-squid-kerberos-lab/providers/Microsoft.Compute/virtualMachines/vm-client1 \
-  --resource-port 3389 --port 13388
+```shell
+SUB_ID=$(az account show --query id -o tsv)
+BASTION_NAME=$(az network bastion list --resource-group rg-squid-kerberos-lab --query "[0].name" -o tsv)
+az network bastion tunnel --name "$BASTION_NAME" --resource-group rg-squid-kerberos-lab \
+  --target-resource-id /subscriptions/$SUB_ID/resourceGroups/rg-squid-kerberos-lab/providers/Microsoft.Compute/virtualMachines/vm-client1 \
+  --resource-port 3389 --port 33388
+```
 
-azlabadmin@lab.contoso.local 
-  ...
+| Field        | Value                        |
+|--------------|------------------------------|
+| AD username  | azlabadmin@lab.contoso.local |
+
+
+In Makefile
+```shell
+
+SSH_KEY=~/.ssh/m4.pub make ssh-proxy
+
+LOCAL_RDP_PORT=23338 make rdp-client
+
+```
