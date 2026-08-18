@@ -1,0 +1,34 @@
+# =============================================================
+# SQUID PROXY CONFIG - AUTHENTICATED MODE (Current)
+# Requires Kerberos/SPNEGO authentication
+# =============================================================
+
+# Kerberos/SPNEGO authentication
+# https://wiki.squid-cache.org/ConfigExamples/Authenticate/Kerberos
+auth_param negotiate program /usr/lib/squid/negotiate_kerberos_auth -k /etc/squid/HTTP.keytab -s HTTP/proxy.lab.contoso.local@LAB.CONTOSO.LOCAL
+auth_param negotiate children 10
+auth_param negotiate keep_alive on
+
+acl kerb_auth proxy_auth REQUIRED
+
+# Port ACLs
+acl SSL_ports port 443
+acl Safe_ports port 80
+acl Safe_ports port 443
+acl Safe_ports port 21
+acl Safe_ports port 3128
+acl CONNECT method CONNECT
+
+# Access rules
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access deny !kerb_auth
+http_access allow kerb_auth
+http_access deny all
+
+# Listening port
+http_port 3128
+
+# Cache settings
+cache_dir ufs /var/spool/squid 100 16 256
+coredump_dir /var/spool/squid

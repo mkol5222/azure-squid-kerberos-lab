@@ -1,5 +1,12 @@
 # Azure Squid + Kerberos (SPNEGO) Proxy Lab
 
+
+## TL;DR
+
+You might be interested in the [TLDR.md](TLDR.md) file, which has a quick-start version of this README.
+
+### or follow:
+
 Terraform that stands up a self-contained Azure lab for testing Squid's
 Kerberos/Negotiate proxy authentication against a real Active Directory
 domain, per the

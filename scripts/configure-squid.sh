@@ -34,6 +34,7 @@ echo "=== configure-squid.sh started $(date -u -Iseconds) ==="
 : "${LAB_COMPUTERS_DN:?LAB_COMPUTERS_DN not set}"
 : "${LAB_DOMAIN_ADMIN_UPN:?LAB_DOMAIN_ADMIN_UPN not set}"
 : "${LAB_DOMAIN_ADMIN_PASSWORD:?LAB_DOMAIN_ADMIN_PASSWORD not set}"
+: "${LAB_ADMIN_USERNAME:?LAB_ADMIN_USERNAME not set}"
 : "${LAB_MSKTUTIL_COMPUTER_NAME:=squid-http}"
 
 export DEBIAN_FRONTEND=noninteractive
@@ -134,9 +135,13 @@ chmod 640 /etc/squid/HTTP.keytab
 echo "--- Verifying the keytab contents ---"
 KRB5_KTNAME=/etc/squid/HTTP.keytab klist -k
 
-echo "--- Writing squid.conf ---"
+echo "--- Writing squid.conf.authenticated and squid.conf.unauthenticated ---"
+# Both variants are kept side by side on disk so the admin can flip between
+# them with a single `make proxy-auth` / `make proxy-noauth` (see below)
+# instead of re-running Terraform. squid.conf itself is deployed as a copy
+# of the authenticated variant, since that's this lab's secure default.
 [ -f /etc/squid/squid.conf ] && cp /etc/squid/squid.conf /etc/squid/squid.conf.orig.bak
-cat >/etc/squid/squid.conf <<SQUIDEOF
+cat >/etc/squid/squid.conf.authenticated <<SQUIDEOF
 # Kerberos/SPNEGO authentication - see
 # https://wiki.squid-cache.org/ConfigExamples/Authenticate/Kerberos
 auth_param negotiate program /usr/lib/squid/negotiate_kerberos_auth -k /etc/squid/HTTP.keytab -s HTTP/$LAB_PROXY_FQDN@$LAB_REALM
@@ -163,6 +168,60 @@ http_port 3128
 cache_dir ufs /var/spool/squid 100 16 256
 coredump_dir /var/spool/squid
 SQUIDEOF
+
+cat >/etc/squid/squid.conf.unauthenticated <<'SQUIDEOF'
+# Does not require Kerberos or any proxy authentication.
+acl SSL_ports port 443
+acl Safe_ports port 80
+acl Safe_ports port 443
+acl Safe_ports port 21
+acl Safe_ports port 3128
+acl CONNECT method CONNECT
+
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access allow all
+
+http_port 3128
+
+cache_dir ufs /var/spool/squid 100 16 256
+coredump_dir /var/spool/squid
+SQUIDEOF
+
+cp /etc/squid/squid.conf.authenticated /etc/squid/squid.conf
+
+echo "--- Installing proxy-auth/proxy-noauth Makefile for $LAB_ADMIN_USERNAME ---"
+# Lets the admin flip Squid between Kerberos-authenticated and open-proxy
+# mode from their home dir without touching Terraform. Recipe lines below
+# must stay TAB-indented (not spaces) -- make requires a literal tab.
+install -d -o "$LAB_ADMIN_USERNAME" -g "$LAB_ADMIN_USERNAME" "/home/$LAB_ADMIN_USERNAME"
+cat >"/home/$LAB_ADMIN_USERNAME/Makefile" <<'MAKEEOF'
+SQUID_CONF = /etc/squid/squid.conf
+SQUID_DIR = /etc/squid
+BACKUP_SUFFIX = $(shell date +%Y%m%d_%H%M%S)
+
+.PHONY: proxy-auth proxy-noauth proxy-status
+
+proxy-auth:
+	@echo "Backing up current config..."
+	@sudo cp $(SQUID_CONF) $(SQUID_DIR)/squid.conf.bak.$(BACKUP_SUFFIX)
+	@echo "Deploying authenticated config..."
+	@sudo cp $(SQUID_DIR)/squid.conf.authenticated $(SQUID_CONF)
+	@sudo systemctl restart squid
+	@echo "Squid restarted with AUTHENTICATED mode."
+
+proxy-noauth:
+	@echo "Backing up current config..."
+	@sudo cp $(SQUID_CONF) $(SQUID_DIR)/squid.conf.bak.$(BACKUP_SUFFIX)
+	@echo "Deploying unauthenticated config..."
+	@sudo cp $(SQUID_DIR)/squid.conf.unauthenticated $(SQUID_CONF)
+	@sudo systemctl restart squid
+	@echo "Squid restarted with UNAUTHENTICATED mode."
+
+proxy-status:
+	@sudo systemctl status squid --no-pager
+MAKEEOF
+chown "$LAB_ADMIN_USERNAME:$LAB_ADMIN_USERNAME" "/home/$LAB_ADMIN_USERNAME/Makefile"
 
 echo "--- systemd drop-in so squid.service always has KRB5_KTNAME set ---"
 mkdir -p /etc/systemd/system/squid.service.d

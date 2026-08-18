@@ -19,6 +19,10 @@
 az account show -o table
 terraform -version
 
+# SSH key in terraform.tfvars
+cp terraform.tfvars.example terraform.tfvars
+# edit terraform.tfvars to include your SSH public key
+
 # deploy
 time make up
 

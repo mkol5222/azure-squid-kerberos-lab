@@ -1,0 +1,24 @@
+# =============================================================
+# SQUID PROXY CONFIG - UNAUTHENTICATED MODE (No Credentials)
+# Does not require Kerberos or any proxy authentication
+# =============================================================
+
+# Port ACLs
+acl SSL_ports port 443
+acl Safe_ports port 80
+acl Safe_ports port 443
+acl Safe_ports port 21
+acl Safe_ports port 3128
+acl CONNECT method CONNECT
+
+# Access rules - no authentication required
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access allow all
+
+# Listening port
+http_port 3128
+
+# Cache settings
+cache_dir ufs /var/spool/squid 100 16 256
+coredump_dir /var/spool/squid
