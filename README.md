@@ -33,7 +33,6 @@ keytab, which is all Kerberos/SPNEGO auth needs — no realmd/sssd/winbind.
 | `variables.tf` / `locals.tf` | All inputs, with validation, and computed names (realm, DNs, FQDNs) |
 | `network.tf` | Resource group, VNet, subnets, NSGs |
 | `bastion.tf` | Azure Bastion (default path to every VM) |
-| `keyvault.tf` | Key Vault + generated passwords |
 | `domain-controller.tf` | The DC VM and its two-phase promotion |
 | `squid-proxy.tf` | The Squid VM and its Kerberos setup |
 | `test-client.tf` | Optional Windows 11 client for end-to-end testing |
@@ -74,13 +73,13 @@ infrastructure to be built, not loosened because it's "just a lab":
   NSG here adds an explicit `Deny-VnetInBound-Override` rule (priority
   4096) plus specific allows above it, so e.g. the client subnet can reach
   the DC's domain-join ports but the proxy subnet can't.
-- **No hardcoded secrets anywhere.** VM admin passwords are generated with
-  `random_password`, injected only via each VM extension's
-  `protected_settings` (which Azure encrypts and excludes from extension
-  status/logs), and mirrored to Key Vault for you to retrieve after the
-  fact. No script file contains a real password — the `.ps1`/`.sh` files
-  in `scripts/` are static and read secrets only from environment
-  variables set at run time.
+- **No hardcoded secrets anywhere.** The VM admin password is a
+  Terraform input (`var.admin_password`, `sensitive = true`, no default),
+  injected only via each VM's `admin_password` argument and each
+  extension's `protected_settings` (which Azure encrypts and excludes from
+  extension status/logs). No script file contains a real password — the
+  `.ps1`/`.sh` files in `scripts/` are static and read secrets only from
+  environment variables set at run time.
 - **AES-only Kerberos**, not the wiki's RC4/DES example — see "Deviations
   from the wiki page" below.
 - **Trusted Launch** (Secure Boot + vTPM) on every VM, at no extra cost on
@@ -92,9 +91,10 @@ infrastructure to be built, not loosened because it's "just a lab":
 
 ### Terraform state will contain secrets in plaintext
 
-`random_password.dc_admin` and `random_password.client_admin` end up in
-Terraform state unencrypted, because Terraform state always contains
-resource attribute values in plaintext. Local state (the default) is fine
+`var.admin_password` ends up in Terraform state unencrypted, because
+Terraform state always contains resource attribute values in plaintext
+(marking a variable `sensitive` only redacts it from CLI output, not from
+the state file). Local state (the default) is fine
 to get started, but before you treat this as anything other than a
 throwaway `terraform destroy`-tonight lab, move to a remote backend. A
 commented-out example is in `versions.tf`:
@@ -130,6 +130,12 @@ az login
 cp terraform.tfvars.example terraform.tfvars
 # edit terraform.tfvars: set domain_name, netbios_name, admin_ssh_public_key
 
+# Set the VM admin/domain-admin password as an env var rather than putting
+# it in tfvars -- keeps it out of any file on disk, per Check Point's
+# Passwords and Credentials Policy. Must be 12-123 chars with 3 of:
+# upper/lower/digit/special (Azure's Windows VM complexity rule).
+export TF_VAR_admin_password='<your-password>'
+
 terraform fmt
 terraform init
 terraform validate
@@ -143,14 +149,11 @@ terraform apply -auto-approve
 A full apply takes roughly 25-35 minutes — most of it is the DC's forest
 promotion, its reboot, and the buffer Terraform waits afterward.
 
-### Retrieving the generated passwords
+### The admin password
 
-```bash
-KV=$(terraform output -raw key_vault_name)
-
-az keyvault secret show --vault-name "$KV" --name dc-local-admin-password --query value -o tsv
-az keyvault secret show --vault-name "$KV" --name client-local-admin-password --query value -o tsv
-```
+There's nothing to retrieve after `apply` — it's whatever you set
+`TF_VAR_admin_password` (or `admin_password` in tfvars) to before running
+it, used as the local admin password on every Windows VM in the lab.
 
 The DC password is also the domain admin password (dcpromo carries local
 Administrators-group members — which includes `var.local_admin_username`,
@@ -227,16 +230,6 @@ with proxy settings pointed at `proxy.<domain>:3128` and line-of-sight to
 
 ```bash
 terraform destroy
-```
-
-Key Vault has purge protection enabled, so the vault itself lingers in a
-soft-deleted state for the retention window (7 days here) after destroy —
-this is intentional (accidental-deletion protection) but means a
-same-named Key Vault can't be recreated immediately. Purge it explicitly
-if you need the name back sooner:
-
-```bash
-az keyvault purge --name <kv-name> --location <location>
 ```
 
 ## Deviations from the linked wiki page, and why

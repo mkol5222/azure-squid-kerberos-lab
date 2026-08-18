@@ -2,11 +2,6 @@ output "resource_group_name" {
   value = azurerm_resource_group.lab.name
 }
 
-output "key_vault_name" {
-  description = "Retrieve generated passwords with: az keyvault secret show --vault-name <this> --name dc-local-admin-password --query value -o tsv"
-  value       = azurerm_key_vault.lab.name
-}
-
 output "domain_name" {
   value = var.domain_name
 }
@@ -35,7 +30,7 @@ output "bastion_name" {
 output "connect_via_bastion" {
   description = "Example az cli commands to reach each VM with no public IP anywhere."
   value = var.deploy_bastion ? {
-    rdp_to_dc     = "az network bastion rdp --name ${azurerm_bastion_host.lab[0].name} --resource-group ${azurerm_resource_group.lab.name} --target-resource-id ${azurerm_windows_virtual_machine.dc.id}"
+    rdp_to_dc = "az network bastion rdp --name ${azurerm_bastion_host.lab[0].name} --resource-group ${azurerm_resource_group.lab.name} --target-resource-id ${azurerm_windows_virtual_machine.dc.id}"
     # -- -o IdentitiesOnly=yes: without it, an ssh-agent holding several
     # keys offers all of them before the one named by --ssh-key, and
     # tunneled bastion SSH's low MaxAuthTries rejects the connection

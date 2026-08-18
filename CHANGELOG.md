@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Removed `keyvault.tf` (the `azurerm_key_vault`, its role assignment, and
+  the `random_password.dc_admin`/`random_password.client_admin` secrets
+  mirrored into it) to cut cost. All Windows VMs now take their local
+  admin/domain-admin password from a new required `var.admin_password`
+  (sensitive, no default, validated against Azure's Windows VM complexity
+  rule) instead of a generated-and-stored one. Supply it via
+  `TF_VAR_admin_password` rather than tfvars, to keep it off disk. The
+  `key_vault_name` output and the `az keyvault secret show`/`az keyvault
+  purge` steps in the README are gone accordingly.
 - Lowered the `required_version` constraint in `versions.tf` (and the
   README prerequisite) from `>= 1.7.0` to `>= 1.5.0`, since Homebrew's
   `terraform` formula is frozen at 1.5.7 (last MPL-licensed release before

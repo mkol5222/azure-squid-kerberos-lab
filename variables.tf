@@ -41,6 +41,27 @@ variable "netbios_name" {
   }
 }
 
+variable "admin_password" {
+  description = "Local admin password for the DC and (if deployed) client Windows VMs -- also becomes the AD domain admin password after dcpromo. Supply via TF_VAR_admin_password or an environment-specific tfvars file that is never committed; must meet Azure's Windows VM complexity rule (12-123 chars, 3 of: upper, lower, digit, special)."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.admin_password) >= 12 && length(var.admin_password) <= 123
+    error_message = "admin_password must be 12-123 characters (Azure Windows VM requirement)."
+  }
+
+  validation {
+    condition = sum([
+      length(regexall("[A-Z]", var.admin_password)) > 0 ? 1 : 0,
+      length(regexall("[a-z]", var.admin_password)) > 0 ? 1 : 0,
+      length(regexall("[0-9]", var.admin_password)) > 0 ? 1 : 0,
+      length(regexall("[^A-Za-z0-9]", var.admin_password)) > 0 ? 1 : 0,
+    ]) >= 3
+    error_message = "admin_password must contain at least 3 of: uppercase, lowercase, digit, special character (Azure Windows VM requirement)."
+  }
+}
+
 variable "local_admin_username" {
   description = "Local admin username created on every VM. Kept off Azure's reserved-name list on purpose (\"administrator\" etc. are rejected by the platform at VM-creation time). On the DC, this account is what dcpromo carries over into Domain Admins."
   type        = string

@@ -18,11 +18,6 @@ az network bastion ssh --name bastion-squidkrb-usspv --resource-group rg-squid-k
   --auth-type ssh-key --username azlabadmin \
   --ssh-key ~/.ssh/m4.pub -- -o IdentitiesOnly=yes
 
-KV=$(terraform output -raw key_vault_name)
-az keyvault secret show --vault-name "$KV" --name client-local-admin-password --query value -o tsv
-
-az keyvault secret show --vault-name "$KV" --name dc-local-admin-password --query value -o tsv
-
 # azlabadmin@lab.contoso.local 
 
 az network bastion tunnel --name bastion-squidkrb-usspv --resource-group rg-squid-kerberos-lab \

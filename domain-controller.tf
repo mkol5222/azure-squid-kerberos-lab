@@ -19,7 +19,7 @@ resource "azurerm_windows_virtual_machine" "dc" {
   resource_group_name   = azurerm_resource_group.lab.name
   size                  = var.dc_vm_size
   admin_username        = var.local_admin_username
-  admin_password        = random_password.dc_admin.result
+  admin_password        = var.admin_password
   network_interface_ids = [azurerm_network_interface.dc.id]
   tags                  = local.tags
 
@@ -50,7 +50,7 @@ locals {
   dc_promote_script = <<-EOT
     $env:LAB_DOMAIN_NAME = "${var.domain_name}"
     $env:LAB_NETBIOS_NAME = "${var.netbios_name}"
-    $env:LAB_ADMIN_PASSWORD = "${random_password.dc_admin.result}"
+    $env:LAB_ADMIN_PASSWORD = "${var.admin_password}"
 
     ${file("${path.module}/scripts/promote-dc.ps1")}
   EOT

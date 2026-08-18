@@ -56,7 +56,7 @@ locals {
     export LAB_PROXY_FQDN='${local.proxy_fqdn}'
     export LAB_COMPUTERS_DN='${local.computers_dn}'
     export LAB_DOMAIN_ADMIN_UPN='${local.domain_admin_upn}'
-    export LAB_DOMAIN_ADMIN_PASSWORD='${random_password.dc_admin.result}'
+    export LAB_DOMAIN_ADMIN_PASSWORD='${var.admin_password}'
     export LAB_MSKTUTIL_COMPUTER_NAME='${var.msktutil_computer_name}'
 
     ${file("${path.module}/scripts/configure-squid.sh")}

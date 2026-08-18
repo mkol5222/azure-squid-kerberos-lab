@@ -21,7 +21,7 @@ resource "azurerm_windows_virtual_machine" "client" {
   resource_group_name   = azurerm_resource_group.lab.name
   size                  = var.client_vm_size
   admin_username        = var.local_admin_username
-  admin_password        = random_password.client_admin[0].result
+  admin_password        = var.admin_password
   network_interface_ids = [azurerm_network_interface.client[0].id]
   tags                  = local.tags
 
@@ -49,7 +49,7 @@ locals {
     $env:LAB_DOMAIN_NAME = "${var.domain_name}"
     $env:LAB_NETBIOS_NAME = "${var.netbios_name}"
     $env:LAB_DOMAIN_ADMIN_USERNAME = "${var.local_admin_username}"
-    $env:LAB_ADMIN_PASSWORD = "${random_password.dc_admin.result}"
+    $env:LAB_ADMIN_PASSWORD = "${var.admin_password}"
 
     ${file("${path.module}/scripts/join-client.ps1")}
   EOT

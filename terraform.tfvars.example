@@ -1,7 +1,9 @@
 # Copy this file to terraform.tfvars and fill in your own values.
-# terraform.tfvars is gitignored -- keep it that way. There are no
-# passwords to set here: Terraform generates those and puts them in
-# Key Vault (see outputs.tf / README.md).
+# terraform.tfvars is gitignored -- keep it that way.
+#
+# Don't set admin_password here. Export it as TF_VAR_admin_password
+# instead so it never touches disk (see README.md); must be 12-123 chars
+# with 3 of: upper/lower/digit/special.
 
 location             = "eastus"
 resource_group_name  = "rg-squid-kerberos-lab"
