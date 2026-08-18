@@ -17,6 +17,11 @@ az network bastion ssh --name "$BASTION_NAME" --resource-group rg-squid-kerberos
   --ssh-key ~/.ssh/m4.pub -- -o IdentitiesOnly=yes
 ```
 
+or
+```shell
+SSH_KEY=~/.ssh/m4.pub make ssh-proxy
+```
+
 # azlabadmin@lab.contoso.local 
 
 ```shell

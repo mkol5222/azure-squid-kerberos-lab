@@ -108,6 +108,12 @@ variable "deploy_test_client" {
   default     = true
 }
 
+variable "block_http_https_from_client" {
+  description = "Block the test client's direct outbound HTTP/HTTPS (80/443) to the Internet via an NSG rule, forcing all web traffic through the Squid proxy on 3128. Leave true to reflect a real proxy-enforced deployment; set false only to debug the client without the proxy in the path."
+  type        = bool
+  default     = true
+}
+
 variable "dc_vm_size" {
   type    = string
   default = "Standard_D2s_v5"

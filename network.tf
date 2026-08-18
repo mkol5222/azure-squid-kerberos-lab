@@ -191,6 +191,24 @@ resource "azurerm_network_security_group" "client" {
     }
   }
 
+  dynamic "security_rule" {
+    for_each = var.block_http_https_from_client ? [1] : []
+    content {
+      # Forces the client's web traffic through the Squid proxy on 3128
+      # (allowed to the proxy subnet via the VNet default-outbound rule)
+      # instead of going straight to the Internet on 80/443.
+      name                       = "Deny-Internet-HTTP-HTTPS-Outbound"
+      priority                   = 200
+      direction                  = "Outbound"
+      access                     = "Deny"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_ranges    = ["80", "443"]
+      source_address_prefix      = var.client_subnet_cidr
+      destination_address_prefix = "Internet"
+    }
+  }
+
   security_rule {
     name                       = "Deny-VnetInBound-Override"
     priority                   = 4096
