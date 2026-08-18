@@ -1,10 +1,14 @@
-.PHONY: up down init plan fmt validate go2dc go2proxy go2client ssh-proxy rdp-client vms-stop vms-start bastion-down bastion-up
+.PHONY: sp-login up down init plan fmt validate go2dc go2proxy go2client ssh-proxy rdp-client vms-stop vms-start bastion-down bastion-up
 
 SSH_KEY ?= ~/.ssh/id_ed25519
 LOCAL_RDP_PORT ?= 33388
 RESOURCE_GROUP ?= rg-squid-kerberos-lab
 PROXY_VM_NAME ?= vm-proxy
 ADMIN_USERNAME ?= azlabadmin
+
+sp-login:
+	@echo "Logging into Azure..."
+	./sp-login.sh
 
 init:
 	terraform init
