@@ -4,6 +4,10 @@
 .terraform/
 .terraform.tfstate.lock.info
 
+# Plan files embed a state snapshot (subscription/tenant IDs, resource
+# attributes) in plaintext -- never commit these either.
+*.tfplan
+
 # Real variable values (SSH keys, overrides) -- keep only the .example.
 *.tfvars
 *.tfvars.json
