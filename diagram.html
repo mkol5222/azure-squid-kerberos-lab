@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Azure Squid + Kerberos Lab — Topology</title>
+<style>
+  :root {
+    --az-blue: #0078d4;
+    --az-blue-dark: #005a9e;
+    --az-blue-light: #e5f1fb;
+    --az-navy: #003a63;
+    --bg: #f3f2f1;
+    --card: #ffffff;
+    --ink: #1b1b1b;
+    --ink-soft: #4b4b4b;
+    --border: #d8d6d4;
+    --dc: #7719aa;
+    --dc-light: #f3e8fa;
+    --proxy: #107c10;
+    --proxy-light: #e6f4e6;
+    --client: #d83b01;
+    --client-light: #fbe9e0;
+    --bastion: #0078d4;
+    --bastion-light: #e5f1fb;
+    --mono: "Cascadia Code", "SF Mono", Consolas, Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    padding: 32px 16px 64px;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .logo-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--az-blue), var(--az-blue-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0,90,158,0.35);
+  }
+  .logo-badge svg { width: 30px; height: 30px; }
+
+  header.top h1 {
+    font-size: 22px;
+    margin: 0 0 2px;
+    color: var(--az-navy);
+    font-weight: 600;
+  }
+  header.top p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+  }
+
+  .badges {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--az-blue-light);
+    color: var(--az-blue-dark);
+    border: 1px solid #bfe0f7;
+    white-space: nowrap;
+  }
+
+  .canvas {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+  }
+
+  /* ---- RG / VNet outer frames ---- */
+  .rg-frame {
+    border: 2px dashed #8a8886;
+    border-radius: 12px;
+    padding: 22px 20px 20px;
+    position: relative;
+    background: repeating-linear-gradient(135deg, rgba(0,0,0,0.015) 0 12px, transparent 12px 24px);
+  }
+  .frame-label {
+    position: absolute;
+    top: -13px;
+    left: 22px;
+    background: var(--card);
+    padding: 0 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #605e5c;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .frame-label .dot { width: 8px; height: 8px; border-radius: 50%; background: #8a8886; }
+
+  .vnet-frame {
+    border: 2px solid var(--az-blue);
+    border-radius: 12px;
+    padding: 30px 18px 18px;
+    margin-top: 8px;
+    position: relative;
+    background: #fafdff;
+  }
+  .vnet-frame .frame-label {
+    color: var(--az-blue-dark);
+    font-size: 13px;
+  }
+  .vnet-frame .frame-label .dot { background: var(--az-blue); }
+
+  .internet-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+  .internet-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #2b2b2b;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+  .internet-pill svg { width: 16px; height: 16px; }
+
+  .arrow-down {
+    display: flex;
+    justify-content: center;
+    margin: 2px 0 10px;
+  }
+  .arrow-down .line {
+    width: 2px;
+    height: 22px;
+    background: linear-gradient(#2b2b2b, var(--az-blue));
+  }
+
+  /* ---- Bastion strip ---- */
+  .bastion-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 22px;
+  }
+  .bastion-card {
+    background: var(--bastion-light);
+    border: 1.5px solid var(--bastion);
+    border-radius: 10px;
+    padding: 12px 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 340px;
+    justify-content: center;
+  }
+  .bastion-card .icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--az-blue);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .bastion-card .icon svg { width: 20px; height: 20px; fill: #fff; }
+  .bastion-card .text b { font-size: 14px; color: var(--az-navy); display:block; }
+  .bastion-card .text span { font-size: 11.5px; color: var(--ink-soft); }
+  .bastion-card .cidr {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: #fff;
+    border: 1px solid #bfe0f7;
+    padding: 2px 7px;
+    border-radius: 5px;
+    color: var(--az-blue-dark);
+  }
+
+  .connector-fan {
+    position: relative;
+    height: 26px;
+    margin-bottom: 4px;
+  }
+
+  /* ---- Subnets row ---- */
+  .subnets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+
+  .subnet {
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .subnet-head {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .subnet-head .name { font-weight: 700; font-size: 14px; color: #fff; }
+  .subnet-head .cidr { font-family: var(--mono); font-size: 11.5px; color: rgba(255,255,255,0.85); }
+
+  .subnet.dc .subnet-head { background: linear-gradient(135deg, var(--dc), #5a1483); }
+  .subnet.proxy .subnet-head { background: linear-gradient(135deg, var(--proxy), #0b5c0b); }
+  .subnet.client .subnet-head { background: linear-gradient(135deg, var(--client), #a02f01); }
+
+  .subnet-body {
+    padding: 16px 14px 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .vm-card {
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 12px 13px;
+    background: #fff;
+    position: relative;
+  }
+  .subnet.dc .vm-card { background: var(--dc-light); border-color: #e0c6f2; }
+  .subnet.proxy .vm-card { background: var(--proxy-light); border-color: #bfe3bf; }
+  .subnet.client .vm-card { background: var(--client-light); border-color: #f3cbb3; }
+
+  .vm-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 8px;
+  }
+  .vm-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .subnet.dc .vm-icon { background: var(--dc); }
+  .subnet.proxy .vm-icon { background: var(--proxy); }
+  .subnet.client .vm-icon { background: var(--client); }
+  .vm-icon svg { width: 17px; height: 17px; fill: #fff; }
+
+  .vm-title { font-size: 13.5px; font-weight: 700; color: var(--ink); line-height:1.25; }
+  .vm-sub { font-size: 11px; color: var(--ink-soft); }
+
+  .kv {
+    font-size: 12px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 8px;
+    margin-top: 6px;
+  }
+  .kv .k { color: var(--ink-soft); }
+  .kv .v { font-family: var(--mono); font-weight: 600; color: var(--ink); word-break: break-word; }
+
+  .role-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+  }
+  .role-tag {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  .subnet.dc .role-tag { color: #5a1483; }
+  .subnet.proxy .role-tag { color: #0b5c0b; }
+  .subnet.client .role-tag { color: #a02f01; }
+
+  .no-vm-note {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    font-style: italic;
+    padding: 6px 2px;
+  }
+
+  .optional-flag {
+    font-size: 10px;
+    font-weight: 700;
+    background: #fff3cd;
+    color: #8a6d00;
+    border: 1px solid #f0dca0;
+    padding: 2px 7px;
+    border-radius: 6px;
+    margin-left: auto;
+  }
+
+  /* ---- flow legend ---- */
+  .flow-panel {
+    margin-top: 26px;
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 20px;
+  }
+
+  .panel-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+    padding: 16px 18px;
+  }
+  .panel-card h3 {
+    margin: 0 0 12px;
+    font-size: 13.5px;
+    color: var(--az-navy);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .panel-card h3 .sq { width:8px; height:8px; border-radius:2px; background:var(--az-blue); }
+
+  .flow-step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 7px 0;
+    border-bottom: 1px dashed #eee;
+    font-size: 12.5px;
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--az-blue);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .flow-step b { color: var(--ink); }
+  .flow-step span.dim { color: var(--ink-soft); }
+
+  table.creds {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  table.creds th, table.creds td {
+    text-align: left;
+    padding: 7px 8px;
+    border-bottom: 1px solid #eee;
+  }
+  table.creds th {
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  table.creds td.mono { font-family: var(--mono); font-size: 12px; }
+  table.creds tr:last-child td { border-bottom: none; }
+
+  .security-strip {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .sec-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: linear-gradient(180deg, #fafafa, #fff);
+  }
+  .sec-card .ico {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    background: var(--az-blue-light);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 8px;
+  }
+  .sec-card .ico svg { width: 15px; height: 15px; fill: var(--az-blue-dark); }
+  .sec-card h4 { margin: 0 0 4px; font-size: 12.5px; color: var(--ink); }
+  .sec-card p { margin: 0; font-size: 11px; color: var(--ink-soft); line-height: 1.45; }
+
+  footer.note {
+    margin-top: 20px;
+    font-size: 11.5px;
+    color: #8a8886;
+    text-align: center;
+  }
+
+  @media (max-width: 900px) {
+    .subnets { grid-template-columns: 1fr; }
+    .flow-panel { grid-template-columns: 1fr; }
+    .security-strip { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <div class="logo-badge">
+      <svg viewBox="0 0 24 24"><path fill="#fff" d="M13.05 4.24 8.56 12l5.19 8.99h4.82L13.4 12l5.17-8.99h-4.82L11.4 6.6z"/><path fill="#fff" opacity="0.6" d="M6.02 4.24 1.53 12l4.49 8.99h2.9L4.44 12l4.48-7.76z"/></svg>
+    </div>
+    <div>
+      <h1>Azure Squid + Kerberos (SPNEGO) Proxy Lab</h1>
+      <p>Terraform-provisioned AD forest + Kerberos-authenticated Squid proxy, tested end-to-end from a domain-joined Windows client</p>
+    </div>
+    <div class="badges">
+      <span class="badge">📍 westeurope</span>
+      <span class="badge">🌐 lab.contoso.local (LAB)</span>
+      <span class="badge">🔒 No Public IPs</span>
+    </div>
+  </header>
+
+  <div class="canvas">
+
+    <div class="rg-frame">
+      <div class="frame-label"><span class="dot"></span> Resource Group · rg-squid-kerberos-lab</div>
+
+      <div class="internet-row">
+        <div class="internet-pill">
+          <svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.9 8h-3.05a15.7 15.7 0 0 0-1.2-4.36A8.03 8.03 0 0 1 18.9 10ZM12 4c.83 1.2 1.5 2.9 1.86 6H10.1c.36-3.1 1.03-4.8 1.86-6Zm-3.65.14A15.7 15.7 0 0 0 7.15 10H4.1a8.03 8.03 0 0 1 4.25-5.86ZM4.1 12h3.05a15.7 15.7 0 0 0 1.2 6.36A8.03 8.03 0 0 1 4.1 12Zm4.05 0h3.76c-.36 3.1-1.03 4.8-1.86 6-.83-1.2-1.5-2.9-1.9-6Zm4.06 6c.83-1.2 1.5-2.9 1.86-6h3.05a8.03 8.03 0 0 1-4.9 6Zm1.86-8c-.36-3.1-1.03-4.8-1.86-6.36A8.03 8.03 0 0 1 19.9 10h-3.05a15.7 15.7 0 0 0-1.19 0Z"/></svg>
+          Public Internet — no VM in this lab has a public IP
+        </div>
+      </div>
+      <div class="arrow-down"><div class="line"></div></div>
+
+      <div class="vnet-frame">
+        <div class="frame-label"><span class="dot"></span> Virtual Network · vnet-squidkrb-xxxxx · 10.60.0.0/16</div>
+
+        <div class="bastion-row">
+          <div class="bastion-card">
+            <div class="icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5.2 3.4 9.9 8 11 4.6-1.1 8-5.8 8-11V5l-8-3Zm0 2.2 6 2.25V11c0 4.1-2.6 8-6 8.94C8.6 19 6 15.1 6 11V6.45l6-2.25Z"/></svg>
+            </div>
+            <div class="text">
+              <b>Azure Bastion</b>
+              <span>bastion-squidkrb-xxxxx · Standard SKU, tunneling enabled — sole entry point</span>
+            </div>
+            <span class="cidr">AzureBastionSubnet · 10.60.10.0/26</span>
+          </div>
+        </div>
+
+        <div class="connector-fan"></div>
+
+        <div class="subnets">
+
+          <!-- DC subnet -->
+          <div class="subnet dc">
+            <div class="subnet-head">
+              <span class="name">snet-dc</span>
+              <span class="cidr">10.60.1.0/24</span>
+            </div>
+            <div class="subnet-body">
+              <div class="vm-card">
+                <div class="vm-head">
+                  <div class="vm-icon">
+                    <svg viewBox="0 0 24 24"><path d="M3 4h18v12H3V4Zm2 2v8h14V6H5Zm4 12h6v2H9v-2Z"/></svg>
+                  </div>
+                  <div>
+                    <div class="vm-title">vm-dc1</div>
+                    <div class="vm-sub">Windows Server 2022 Datacenter: Azure Edition</div>
+                  </div>
+                </div>
+                <div class="kv">
+                  <span class="k">Hostname</span><span class="v">dc1.lab.contoso.local</span>
+                  <span class="k">Private IP</span><span class="v">10.60.1.4 (static)</span>
+                  <span class="k">Size</span><span class="v">Standard_D2s_v5</span>
+                  <span class="k">Login</span><span class="v">azlabadmin</span>
+                </div>
+                <div class="role-tags">
+                  <span class="role-tag">AD DS Forest Root</span>
+                  <span class="role-tag">DNS Server</span>
+                  <span class="role-tag">KDC (Kerberos)</span>
+                  <span class="role-tag">Domain Admin owner</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Proxy subnet -->
+          <div class="subnet proxy">
+            <div class="subnet-head">
+              <span class="name">snet-proxy</span>
+              <span class="cidr">10.60.2.0/24</span>
+            </div>
+            <div class="subnet-body">
+              <div class="vm-card">
+                <div class="vm-head">
+                  <div class="vm-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2 2 7v10l10 5 10-5V7L12 2Zm0 2.3 7.3 3.65L12 11.6 4.7 7.95 12 4.3ZM4 9.6l7 3.5v7.1l-7-3.5V9.6Zm9 10.6v-7.1l7-3.5v7.1l-7 3.5Z"/></svg>
+                  </div>
+                  <div>
+                    <div class="vm-title">vm-proxy</div>
+                    <div class="vm-sub">Ubuntu 24.04 LTS · not domain-joined</div>
+                  </div>
+                </div>
+                <div class="kv">
+                  <span class="k">Hostname</span><span class="v">proxy.lab.contoso.local</span>
+                  <span class="k">Private IP</span><span class="v">10.60.2.4 (static)</span>
+                  <span class="k">Size</span><span class="v">Standard_B2s</span>
+                  <span class="k">Login</span><span class="v">azlabadmin (SSH key only)</span>
+                  <span class="k">SPN</span><span class="v">HTTP/proxy.lab.contoso.local</span>
+                </div>
+                <div class="role-tags">
+                  <span class="role-tag">Squid 3128</span>
+                  <span class="role-tag">negotiate_kerberos_auth</span>
+                  <span class="role-tag">msktutil keytab</span>
+                  <span class="role-tag">AES-only enctypes</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Client subnet -->
+          <div class="subnet client">
+            <div class="subnet-head">
+              <span class="name">snet-client <span class="optional-flag">optional</span></span>
+              <span class="cidr">10.60.3.0/24</span>
+            </div>
+            <div class="subnet-body">
+              <div class="vm-card">
+                <div class="vm-head">
+                  <div class="vm-icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 4h16v11H4V4Zm0 13h16v1H4v-1ZM10 20h4v1h-4v-1Z"/></svg>
+                  </div>
+                  <div>
+                    <div class="vm-title">vm-client1</div>
+                    <div class="vm-sub">Windows 11 Pro (25H2) · domain-joined</div>
+                  </div>
+                </div>
+                <div class="kv">
+                  <span class="k">Hostname</span><span class="v">client1.lab.contoso.local</span>
+                  <span class="k">Private IP</span><span class="v">10.60.3.4 (static)</span>
+                  <span class="k">Size</span><span class="v">Standard_D2s_v5</span>
+                  <span class="k">Login</span><span class="v">azlabadmin@lab.contoso.local</span>
+                </div>
+                <div class="role-tags">
+                  <span class="role-tag">SSO test client</span>
+                  <span class="role-tag">Proxy → proxy.lab.contoso.local:3128</span>
+                  <span class="role-tag">klist verification</span>
+                </div>
+              </div>
+              <div class="no-vm-note">Deployed when <span style="font-family:var(--mono)">deploy_test_client = true</span> (default)</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-panel">
+      <div class="panel-card">
+        <h3><span class="sq"></span>Kerberos SPNEGO auth flow (client → proxy)</h3>
+        <div class="flow-step"><div class="flow-num">1</div><div><b>Client requests</b> a service ticket for <b>HTTP/proxy.lab.contoso.local</b> from the DC's KDC (port 88). <span class="dim">Requires proxy addressed by FQDN, not IP.</span></div></div>
+        <div class="flow-step"><div class="flow-num">2</div><div><b>DC/KDC issues</b> the ticket using the AES256 key shared with the <b>squid-http</b> computer object created by msktutil.</div></div>
+        <div class="flow-step"><div class="flow-num">3</div><div><b>Client presents</b> the ticket to Squid via an HTTP <span class="dim">Negotiate</span> header on port 3128.</div></div>
+        <div class="flow-step"><div class="flow-num">4</div><div><b>Squid validates</b> it against its keytab using <span class="dim">negotiate_kerberos_auth</span> — no password prompt, no credential ever leaves the client.</div></div>
+        <div class="flow-step"><div class="flow-num">5</div><div><b>Request proxied</b> onward to the internet; user only sees a normal page load.</div></div>
+      </div>
+
+      <div class="panel-card">
+        <h3><span class="sq"></span>Access &amp; identities</h3>
+        <table class="creds">
+          <tr><th>Path in</th><th>Detail</th></tr>
+          <tr><td>Bastion RDP</td><td class="mono">vm-dc1, vm-client1 :3389</td></tr>
+          <tr><td>Bastion SSH</td><td class="mono">vm-proxy :22 (key-only)</td></tr>
+        </table>
+        <table class="creds" style="margin-top:10px;">
+          <tr><th>Account</th><th>Scope</th></tr>
+          <tr><td class="mono">azlabadmin</td><td>Local admin on every VM; becomes Domain Admin after dcpromo</td></tr>
+          <tr><td class="mono">squid-http</td><td>AD computer object (keytab only, no login)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="security-strip">
+      <div class="sec-card">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5.2 3.4 9.9 8 11 4.6-1.1 8-5.8 8-11V5l-8-3Z"/></svg></div>
+        <h4>No public IPs</h4>
+        <p>Every NIC is private-only. Azure Bastion is the sole path in — no fallback variable exists.</p>
+      </div>
+      <div class="sec-card">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div>
+        <h4>Micro-segmentation</h4>
+        <p>Explicit <span style="font-family:var(--mono)">Deny-VnetInBound-Override</span> (4096) overrides Azure's default allow-all-in-VNet rule per NSG.</p>
+      </div>
+      <div class="sec-card">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4Zm-1 14-3-3 1.4-1.4L11 12.2l4.6-4.6L17 9l-6 6Z"/></svg></div>
+        <h4>AES-only Kerberos</h4>
+        <p>aes256/128-cts-hmac-sha1-96 only — RC4/DES from the original wiki example are disallowed.</p>
+      </div>
+      <div class="sec-card">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h1Zm2 0h8V7a4 4 0 0 0-8 0v3Z"/></svg></div>
+        <h4>No hardcoded secrets</h4>
+        <p>Admin password comes only from <span style="font-family:var(--mono)">TF_VAR_admin_password</span> at apply time — never written to a script file.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="note">
+    Generated from Terraform configuration in this repo (network.tf · locals.tf · variables.tf · terraform.tfvars · domain-controller.tf · squid-proxy.tf · test-client.tf · bastion.tf). Static v1 — regenerate after topology changes.
+  </footer>
+
+</div>
+</body>
+</html>
