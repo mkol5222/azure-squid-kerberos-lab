@@ -27,7 +27,13 @@ cp terraform.tfvars.example terraform.tfvars
 time make up
 
 # access proxy vm via bastion
+az extension add -n ssh
 SSH_KEY=~/.ssh/your_key make ssh-proxy
+# in Linux
+sudo apt install make -y
+sudo tail -f /var/log/squid/access.log
+
 # access RDP to client vm via bastion - tunnel RDP port 3389 to local port 33388
 LOCAL_RDP_PORT=33388 make rdp-client
+# Vscode - port forward to localhost from Ports (if in Codespaces)
 ```
